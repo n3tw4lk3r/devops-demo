@@ -1,0 +1,7 @@
+services:
+  devops-demo:
+    build: .
+    ports:
+      - "8080:3000"
+    container_name: devops-demo-app
+    restart: unless-stopped
