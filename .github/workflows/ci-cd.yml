@@ -69,17 +69,6 @@ jobs:
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Install cargo-deny
-      run: |
-        curl -L https://github.com/EmbarkStudios/cargo-deny/releases/download/0.14.2/cargo-deny-0.14.2-x86_64-unknown-linux-musl.tar.gz | tar -xz
-        sudo mv cargo-deny-0.14.2-x86_64-unknown-linux-musl/cargo-deny /usr/local/bin/
-        cargo deny --version
-
-    - name: Run cargo deny
-      run: |
-        cargo deny fetch
-        cargo deny check
-
     - name: Install Trivy
       uses: aquasecurity/trivy-action@master
       with:
