@@ -146,10 +146,21 @@ jobs:
       with:
         version: 'v1.28.0'
 
+    - name: Configure kubeconfig
+      run: |
+        mkdir -p ~/.kube
+        # Создаем kubeconfig из секрета
+        cat > ~/.kube/config << 'EOF'
+        ${{ secrets.KUBECONFIG }}
+        EOF
+        chmod 600 ~/.kube/config
+        
+        # Проверяем подключение
+        kubectl cluster-info
+        kubectl get nodes
+
     - name: Deploy to Kubernetes
-      env:
-        KUBECONFIG: ${{ secrets.KUBECONFIG }}
       run: |
         kubectl apply -f k8s/
-        kubectl rollout status deployment/devops-demo
+        kubectl rollout status deployment/devops-demo --timeout=5m
         kubectl get all
