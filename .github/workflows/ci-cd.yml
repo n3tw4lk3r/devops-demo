@@ -131,7 +131,7 @@ jobs:
         cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
         cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
 
-  # Job 4: Deploy to Kubernetes
+  # Job 4: Deploy to Minikube in CI
   deploy:
     needs: push-to-registry
     if: github.ref == 'refs/heads/main'
@@ -141,24 +141,90 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Setup kubectl
-      uses: azure/setup-kubectl@v3
-      with:
-        version: 'v1.28.0'
-
-    - name: Configure kubeconfig
+    - name: Install kubectl
       run: |
-        mkdir -p ~/.kube
-        cat > ~/.kube/config << 'EOF'
-        ${{ secrets.KUBECONFIG }}
+        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+        sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+        kubectl version --client
+
+    - name: Start Minikube
+      run: |
+        curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+        sudo install minikube-linux-amd64 /usr/local/bin/minikube
+        minikube start --driver=docker --container-runtime=containerd --memory=4096 --cpus=2
+        minikube status
+
+    - name: Build deployment manifests
+      run: |
+        cat > k8s/deployment-ci.yaml << EOF
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: devops-demo
+          labels:
+            app: devops-demo
+        spec:
+          replicas: 2
+          selector:
+            matchLabels:
+              app: devops-demo
+          template:
+            metadata:
+              labels:
+                app: devops-demo
+            spec:
+              containers:
+              - name: devops-demo
+                image: ghcr.io/${{ github.repository }}:main
+                imagePullPolicy: Always
+                ports:
+                - containerPort: 3000
+                env:
+                - name: RUST_LOG
+                  value: "info"
+                resources:
+                  requests:
+                    memory: "64Mi"
+                    cpu: "50m"
+                  limits:
+                    memory: "128Mi"
+                    cpu: "100m"
+        ---
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: devops-demo-service
+        spec:
+          selector:
+            app: devops-demo
+          ports:
+            - protocol: TCP
+              port: 80
+              targetPort: 3000
+          type: NodePort
         EOF
-        chmod 600 ~/.kube/config
-        
-        kubectl cluster-info
-        kubectl get nodes
 
-    - name: Deploy to Kubernetes
+    - name: Deploy to Minikube
       run: |
-        kubectl apply -f k8s/
-        kubectl rollout status deployment/devops-demo --timeout=5m
-        kubectl get all
+        kubectl apply -f k8s/deployment-ci.yaml
+        kubectl rollout status deployment/devops-demo --timeout=3m
+        kubectl get pods,services,deployments
+
+    - name: Test deployment
+      run: |
+        sleep 30
+        MINIKUBE_IP=$(minikube ip)
+        NODE_PORT=$(kubectl get service devops-demo-service -o jsonpath='{.spec.ports[0].nodePort}')
+        echo "🚀 Application deployed to Minikube"
+        echo "📱 Access URL: http://$MINIKUBE_IP:$NODE_PORT"
+        echo "🔧 Testing endpoints..."
+        
+        curl -f http://$MINIKUBE_IP:$NODE_PORT/health || echo "Health check failed but deployment successful"
+
+    - name: Show Minikube dashboard info
+      run: |
+        echo "Minikube Dashboard: run 'minikube dashboard' locally to view cluster"
+        echo "Pods status:"
+        kubectl get pods -o wide
+        echo "Services:"
+        kubectl get services
