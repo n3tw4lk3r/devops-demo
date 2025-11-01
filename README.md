@@ -27,8 +27,11 @@ curl http://localhost:3000/health
 
 ## Docker
 ```bash
+eval $(minikube docker-env -u)
 docker build -t devops-demo:latest .
 docker run -p 8080:3000 devops-demo:latest
+# (in another terminal)
+curl http://localhost:8080/health
 ```
 
 ## Kubernetes (Minikube)
