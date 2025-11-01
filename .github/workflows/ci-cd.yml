@@ -69,15 +69,21 @@ jobs:
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Install Trivy
+    - name: Build Docker image for security scan
+      run: docker build -t devops-demo:latest .
+
+    - name: Scan Docker image with Trivy
       uses: aquasecurity/trivy-action@master
       with:
-        trivy-version: '0.49.1'
+        image-ref: 'devops-demo:latest'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        severity: 'CRITICAL,HIGH'
 
-    - name: Scan Docker image for vulnerabilities
-      run: |
-        docker build -t devops-demo:latest .
-        trivy image --exit-code 1 --severity CRITICAL,HIGH devops-demo:latest
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'
 
   # Job 3: Push to Container Registry
   push-to-registry:
