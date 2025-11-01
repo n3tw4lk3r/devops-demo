@@ -2,3 +2,11 @@ target/
 *.rs.bk
 *.swp
 .DS_Store
+
+# CI/CD
+.trivy/
+*.sarif
+
+# Local kubeconfig
+kubeconfig
+.kube/
