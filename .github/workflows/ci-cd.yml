@@ -76,7 +76,9 @@ jobs:
         cargo deny --version
 
     - name: Run cargo deny
-      run: cargo deny check
+      run: |
+        cargo deny fetch
+        cargo deny check
 
     - name: Install Trivy
       uses: aquasecurity/trivy-action@master
