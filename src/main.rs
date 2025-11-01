@@ -1,11 +1,6 @@
-use axum::{
-    routing::get,
-    Router,
-    response::Json,
-    http::StatusCode,
-};
-use std::net::SocketAddr;
+use axum::{http::StatusCode, response::Json, routing::get, Router};
 use serde::Serialize;
+use std::net::SocketAddr;
 
 #[derive(Serialize)]
 struct Message {
@@ -21,7 +16,7 @@ async fn main() {
         .route("/health", get(health_check));
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
-    
+
     println!("Server launched on http://{}", addr);
 
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
