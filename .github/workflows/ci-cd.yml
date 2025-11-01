@@ -76,7 +76,11 @@ jobs:
         cargo deny --version
 
     - name: Run cargo deny
-      run: cargo deny check
+      run: |
+        # Сначала обновляем базу уязвимостей
+        cargo deny fetch
+        # Затем запускаем проверки
+        cargo deny check
 
     - name: Install Trivy
       uses: aquasecurity/trivy-action@master
