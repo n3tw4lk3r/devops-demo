@@ -11,7 +11,7 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  # Job 1
+  # Job 1: Testing and build
   test-and-build:
     runs-on: ubuntu-latest
     steps:
@@ -52,41 +52,41 @@ jobs:
       run: docker build -t ${{ env.IMAGE_NAME }}:latest .
 
   # Job 2: Security scanning
-    security:
-      runs-on: ubuntu-latest
-      steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  security:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      - name: Setup Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
+    - name: Setup Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
 
-      - name: Run cargo audit
-        uses: actions-rs/audit-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Run cargo audit
+      uses: actions-rs/audit-check@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install cargo-deny
-        run: |
-          curl -L https://github.com/EmbarkStudios/cargo-deny/releases/download/0.14.2/cargo-deny-0.14.2-x86_64-unknown-linux-musl.tar.gz | tar -xz
-          sudo mv cargo-deny-0.14.2-x86_64-unknown-linux-musl/cargo-deny /usr/local/bin/
-          cargo deny --version
+    - name: Install cargo-deny
+      run: |
+        curl -L https://github.com/EmbarkStudios/cargo-deny/releases/download/0.14.2/cargo-deny-0.14.2-x86_64-unknown-linux-musl.tar.gz | tar -xz
+        sudo mv cargo-deny-0.14.2-x86_64-unknown-linux-musl/cargo-deny /usr/local/bin/
+        cargo deny --version
 
-      - name: Run cargo deny
-        run: cargo deny check
+    - name: Run cargo deny
+      run: cargo deny check
 
-      - name: Install Trivy
-        uses: aquasecurity/trivy-action@master
-        with:
-          trivy-version: '0.49.1'
+    - name: Install Trivy
+      uses: aquasecurity/trivy-action@master
+      with:
+        trivy-version: '0.49.1'
 
-      - name: Scan Docker image for vulnerabilities
-        run: |
-          docker build -t devops-demo:latest .
-          trivy image --exit-code 1 --severity CRITICAL,HIGH devops-demo:latest
+    - name: Scan Docker image for vulnerabilities
+      run: |
+        docker build -t devops-demo:latest .
+        trivy image --exit-code 1 --severity CRITICAL,HIGH devops-demo:latest
 
   # Job 3: Push to Container Registry
   push-to-registry:
