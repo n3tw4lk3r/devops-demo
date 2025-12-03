@@ -1,38 +1,40 @@
-FROM rustlang/rust:nightly-slim as planner
-WORKDIR /app
-COPY Cargo.toml Cargo.lock .
-RUN cargo install cargo-chef
-RUN cargo chef prepare --recipe-path recipe.json
+FROM rust:1.78-slim AS builder
 
-FROM rustlang/rust:nightly-slim as cacher
 WORKDIR /app
-COPY --from=planner /app/recipe.json .
-RUN cargo install cargo-chef
-RUN cargo chef cook --release --recipe-path recipe.json
 
-FROM rustlang/rust:nightly-slim as builder
-WORKDIR /app
-COPY . .
-COPY --from=cacher /app/target ./target
-COPY --from=cacher /usr/local/cargo /usr/local/cargo
+COPY Cargo.toml Cargo.lock ./
+
+RUN mkdir -p src && \
+    echo 'fn main() { println!("dummy"); }' > src/main.rs
+
+RUN cargo build --release
+
+RUN rm -rf src
+RUN rm -f target/release/deps/devops_demo*
+
+COPY src ./src
+
 RUN cargo build --release
 RUN strip target/release/devops-demo
 
 FROM debian:bookworm-slim
-RUN useradd -m -u 1000 app
+
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ca-certificates && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get install -y --no-install-recommends \
+    ca-certificates \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd -r app && useradd -r -g app -u 1000 -s /bin/false app
 
 USER app
 WORKDIR /app
-COPY --from=builder /app/target/release/devops-demo .
+
+COPY --from=builder --chown=app:app /app/target/release/devops-demo .
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
     CMD ["./devops-demo", "healthcheck"] || exit 1
 
 EXPOSE 3000
-STOPSIGNAL SIGTERM
 
 CMD ["./devops-demo"]
