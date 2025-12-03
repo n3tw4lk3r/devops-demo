@@ -1,16 +1,16 @@
-FROM rust:1.80-slim as planner
+FROM rustlang/rust:nightly-slim as planner
 WORKDIR /app
 COPY Cargo.toml Cargo.lock .
 RUN cargo install cargo-chef
 RUN cargo chef prepare --recipe-path recipe.json
 
-FROM rust:1.80-slim as cacher
+FROM rustlang/rust:nightly-slim as cacher
 WORKDIR /app
 COPY --from=planner /app/recipe.json .
 RUN cargo install cargo-chef
 RUN cargo chef cook --release --recipe-path recipe.json
 
-FROM rust:1.80-slim as builder
+FROM rustlang/rust:nightly-slim as builder
 WORKDIR /app
 COPY . .
 COPY --from=cacher /app/target ./target
